@@ -7,18 +7,20 @@ permissions:
   contents: read
 
 jobs:
-  agent-versions:
+  image-versions:
     runs-on: ubuntu-26.04
     outputs:
       codex: ${{ steps.resolve.outputs.codex }}
       claude: ${{ steps.resolve.outputs.claude }}
+      gh: ${{ steps.resolve.outputs.gh }}
+      uv: ${{ steps.resolve.outputs.uv }}
     steps:
       - uses: actions/checkout@v7
       - id: resolve
-        run: bash scripts/resolve-agent-versions.sh >> "$GITHUB_OUTPUT"
+        run: bash tests/resolve-image-versions.sh >> "$GITHUB_OUTPUT"
 
   image-and-sdk-smoke:
-    needs: agent-versions
+    needs: image-versions
     runs-on: ubuntu-26.04
     timeout-minutes: 60
     steps:
@@ -34,16 +36,19 @@ jobs:
           context: .
           platforms: linux/amd64
           load: true
+          pull: true
           tags: agent-devstation:ci
           build-args: |
-            CODEX_VERSION=${{ needs.agent-versions.outputs.codex }}
-            CLAUDE_VERSION=${{ needs.agent-versions.outputs.claude }}
+            CODEX_VERSION=${{ needs.image-versions.outputs.codex }}
+            CLAUDE_VERSION=${{ needs.image-versions.outputs.claude }}
+            GH_VERSION=${{ needs.image-versions.outputs.gh }}
+            UV_VERSION=${{ needs.image-versions.outputs.uv }}
           cache-from: type=gha,scope=agent-devstation-amd64
           cache-to: type=gha,scope=agent-devstation-amd64,mode=min,ignore-error=true
       - run: IMAGE=agent-devstation:ci bash tests/smoke.sh
 
   arm64-build:
-    needs: agent-versions
+    needs: image-versions
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 60
     steps:
@@ -58,10 +63,13 @@ jobs:
           context: .
           platforms: linux/arm64
           load: true
+          pull: true
           tags: agent-devstation:ci
           build-args: |
-            CODEX_VERSION=${{ needs.agent-versions.outputs.codex }}
-            CLAUDE_VERSION=${{ needs.agent-versions.outputs.claude }}
+            CODEX_VERSION=${{ needs.image-versions.outputs.codex }}
+            CLAUDE_VERSION=${{ needs.image-versions.outputs.claude }}
+            GH_VERSION=${{ needs.image-versions.outputs.gh }}
+            UV_VERSION=${{ needs.image-versions.outputs.uv }}
           cache-from: type=gha,scope=agent-devstation-arm64
           cache-to: type=gha,scope=agent-devstation-arm64,mode=min,ignore-error=true
       - run: IMAGE=agent-devstation:ci bash tests/smoke.sh

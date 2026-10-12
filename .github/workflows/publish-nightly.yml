@@ -3,6 +3,7 @@ name: Publish nightly image
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,24 +20,26 @@ env:
   SOURCE_RUN_NUMBER: ${{ github.run_number }}
 
 jobs:
-  agent-versions:
-    if: github.repository == 'LucUrlings/agent-devstation'
+  image-versions:
+    if: github.repository == 'LucUrlings/agent-devstation' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-26.04
     permissions:
       contents: read
     outputs:
       codex: ${{ steps.resolve.outputs.codex }}
       claude: ${{ steps.resolve.outputs.claude }}
+      gh: ${{ steps.resolve.outputs.gh }}
+      uv: ${{ steps.resolve.outputs.uv }}
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ env.SOURCE_SHA }}
       - id: resolve
-        run: bash scripts/resolve-agent-versions.sh >> "$GITHUB_OUTPUT"
+        run: bash scripts/resolve-image-versions.sh >> "$GITHUB_OUTPUT"
 
   build:
-    if: github.repository == 'LucUrlings/agent-devstation'
-    needs: agent-versions
+    if: github.repository == 'LucUrlings/agent-devstation' && github.ref == 'refs/heads/main'
+    needs: image-versions
     strategy:
       fail-fast: false
       matrix:
@@ -68,11 +71,15 @@ jobs:
           context: .
           platforms: ${{ matrix.platform }}
           push: true
+          # Refresh the Ubuntu base and every package installation when publishing.
+          pull: true
+          no-cache: true
           tags: ${{ env.IMAGE }}:nightly-${{ env.SOURCE_SHA }}-${{ matrix.arch }}
           build-args: |
-            CODEX_VERSION=${{ needs.agent-versions.outputs.codex }}
-            CLAUDE_VERSION=${{ needs.agent-versions.outputs.claude }}
-          cache-from: type=gha,scope=agent-devstation-${{ matrix.arch }}
+            CODEX_VERSION=${{ needs.image-versions.outputs.codex }}
+            CLAUDE_VERSION=${{ needs.image-versions.outputs.claude }}
+            GH_VERSION=${{ needs.image-versions.outputs.gh }}
+            UV_VERSION=${{ needs.image-versions.outputs.uv }}
           cache-to: type=gha,scope=agent-devstation-${{ matrix.arch }},mode=min,ignore-error=true
       - name: Smoke-test the pushed architecture image
         run: |

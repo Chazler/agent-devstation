@@ -3,6 +3,12 @@ name: Publish release image
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing published full release tag (e.g. v0.1.0)'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -18,18 +24,31 @@ env:
 
 jobs:
   release:
-    if: ${{ !github.event.release.prerelease }}
+    if: >-
+      github.repository == 'LucUrlings/agent-devstation' &&
+      ((github.event_name == 'release' && !github.event.release.prerelease) ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
     runs-on: ubuntu-26.04
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.release.tag_name }}
-          fetch-depth: 0
-      - name: Verify release tag and commit
+      - name: Verify published full release
+        shell: bash
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           [[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Use a full release tag such as v0.1.0' >&2; exit 1; }
+          if ! gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" \
+            | jq -e -s --arg tag "$TAG" 'length == 1 and (.[0] | .tag_name == $tag and .draft == false and .prerelease == false and .published_at != null)' > /dev/null; then
+            echo 'The tag must belong to an existing published full release' >&2
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          fetch-depth: 0
+      - name: Verify release commit is on main
+        run: |
           git fetch origin main
           git merge-base --is-ancestor HEAD FETCH_HEAD
       - uses: docker/setup-buildx-action@v4
@@ -39,8 +58,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Promote the built commit to a full release
-        env:
-          TAG: ${{ github.event.release.tag_name }}
         run: |
           commit=$(git rev-parse HEAD)
           docker buildx imagetools inspect --raw "${IMAGE}:nightly-${commit}" \

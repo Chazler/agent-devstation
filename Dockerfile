@@ -15,7 +15,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers \
     PATH=/opt/sdk/python/current/bin:/opt/sdk/node/current/bin:/opt/sdk/dotnet/current:/opt/sdk/java/current/bin:/opt/sdk/go/current/bin:/home/dev/go/bin:/opt/sdk/rust/current/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update \
+    && apt-get upgrade -y --with-new-pkgs --no-install-recommends \
+    && apt-get install -y --no-install-recommends \
       bash bubblewrap ca-certificates curl git gnupg gosu jq openssh-client procps \
       sudo passwd tar unzip xz-utils zstd build-essential libicu78 libssl3t64 \
     && rm -rf /var/lib/apt/lists/* \
@@ -24,16 +26,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && chown -R dev:dev /home/dev
 
 # GitHub's signed apt repository supplies the same gh command to all projects.
+ARG GH_VERSION
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
     && chmod 0644 /etc/apt/keyrings/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
-    && apt-get update && apt-get install -y --no-install-recommends gh \
+    && apt-get update \
+    && if [ -n "$GH_VERSION" ]; then apt-get install -y --no-install-recommends "gh=$GH_VERSION"; else apt-get install -y --no-install-recommends gh; fi \
     && rm -rf /var/lib/apt/lists/* \
+    && { [ -z "$GH_VERSION" ] || [ "$(dpkg-query -W -f='${Version}' gh)" = "$GH_VERSION" ]; } \
     && gh --version
 
-RUN curl -fsSL https://astral.sh/uv/install.sh -o /tmp/install-uv.sh \
-    && UV_INSTALL_DIR=/usr/local/bin sh /tmp/install-uv.sh \
+ARG UV_VERSION
+RUN if [ -n "$UV_VERSION" ]; then url="https://astral.sh/uv/$UV_VERSION/install.sh"; else url=https://astral.sh/uv/install.sh; fi \
+    && curl -fsSL "$url" -o /tmp/install-uv.sh \
+    && UV_INSTALL_DIR=/usr/local/bin UV_NO_MODIFY_PATH=1 sh /tmp/install-uv.sh \
     && rm /tmp/install-uv.sh \
+    && { [ -z "$UV_VERSION" ] || [ "$(uv --version | awk '{print $2}')" = "$UV_VERSION" ]; } \
     && uv --version
 
 # Anthropic's signed stable apt repository keeps the CLI outside user SDK paths.
