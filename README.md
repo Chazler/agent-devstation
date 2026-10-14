@@ -98,6 +98,21 @@ This enables the browser editor and Codex's Linux sandbox so you can use **eithe
 
 6. Open the editor at `http://localhost:8080` **on the Docker host** and enter the `.env` password. From another machine, run `ssh -L 8080:127.0.0.1:8080 user@your-server` and open `http://localhost:8080` locally. Alternatively, use your own reverse proxy with TLS, authentication, and WebSocket support. A containerized proxy must share a Docker network with Agent Devstation and target **port 8080**. Only the editor uses that port; do not publish an agent protocol port. [Editor details](docs/guide.md#browser-editor).
 
+   You can also run Remote Control from the browser VS Code terminal. Open **Terminal → New Terminal**; it already runs inside Agent Devstation as `dev` and shares the saved agent logins. Change to your project directory, then run the commands directly for whichever agent you use:
+
+   ```sh
+   cd /home/dev/workspaces/project
+
+   # Codex
+   codex remote-control start
+   codex remote-control pair
+
+   # Claude Code
+   claude remote-control
+   ```
+
+   Replace `project` with your project folder. Keep the Claude Code Remote Control terminal running while using it.
+
 Use `docker compose exec -u dev -w /home/dev/workspaces/project agent-devstation codex` or the equivalent `claude` command for normal terminal sessions. You can move from the simple setup to this one without losing projects or logins if you keep the same mounts and volume name.
 
 ## Customize either setup
