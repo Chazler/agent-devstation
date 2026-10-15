@@ -72,8 +72,6 @@ COPY scripts/entrypoint.sh scripts/install-sdks.sh scripts/install-editor.sh scr
 COPY scripts/codex.sh /usr/local/bin/codex
 RUN chmod 0755 /usr/local/lib/agent-devstation/*.sh /usr/local/bin/codex && chown -R dev:dev /home/dev
 
-RUN /usr/local/lib/agent-devstation/install-tools.sh --binaries-only
-
 WORKDIR /home/dev/workspaces
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/lib/agent-devstation/entrypoint.sh"]

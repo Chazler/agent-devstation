@@ -203,9 +203,9 @@ The editor and agents can read mounted projects and home credentials and reach t
 
 `tools/registry.json` is the checked-in source for tool defaults, reviewed versions,
 architecture-specific download URLs and SHA-256 checksums, or specialized installers.
-`kubectl` 1.35.0 is baked into the image for AMD64 and ARM64. Docker and Playwright
-Chromium retain their existing installers and remain off by default. SDK selection
-is unchanged.
+`kubectl` 1.35.0 is available for AMD64 and ARM64 when explicitly selected. All
+registry tools default to off and install at startup. Docker and Playwright
+Chromium retain their existing installers. SDK selection is unchanged.
 
 ```yaml
 environment:
@@ -226,8 +226,8 @@ and unsupported architectures fail before tool installations or removals. No
 runtime download of manifests or shell evaluation is used. Installation stages a
 verified download, records completion, and reuses it on restart. Corrupt or missing
 binaries are repaired. Only registry-owned executable links are removed.
-Container recreation repeats optional downloads; binaries baked into the image
-need no download when their default version is selected.
+Container recreation repeats downloads for selected tools. The image contains
+the registry and installers, without preinstalling registry tools.
 
 To add a standalone binary:
 
@@ -244,9 +244,10 @@ installer: set `installer` to a checked-in executable `install-<name>.sh` and
 `enabled_env` to its namespaced boolean setting. The installer must implement
 idempotent installation, disabled-state cleanup, integrity checks, and interrupted
 installation recovery. Copy it into the image in the Dockerfile. Custom installers
-run after SDK installation and are skipped during the binary-only image build.
-Use the Docker and Playwright entries as examples. Defaults marked true for raw
-binaries are installed at image build time by the same generic installer.
+run after SDK installation. Use the Docker and Playwright entries as examples.
+Set `default` to false for opt-in tools; tools with `default: true` are selected
+at startup when `AGENT_DEVSTATION_TOOLS` is unset. The default Compose file
+explicitly selects no registry tools.
 
 The registry installs clients only. Provide Kubernetes credentials separately,
 for example a read-only kubeconfig mount at `/home/dev/.kube/config`, readable by
