@@ -106,8 +106,7 @@ fi
 # Installers run as root, but HOME belongs to dev in normal sessions. Keep
 # installer caches out of the persisted dev home.
 HOME=/root /usr/local/lib/agent-devstation/install-sdks.sh >&2
-HOME=/root /usr/local/lib/agent-devstation/install-docker-cli.sh >&2
-HOME=/root /usr/local/lib/agent-devstation/install-playwright-browser.sh >&2
+HOME=/root /usr/local/lib/agent-devstation/install-tools.sh >&2
 chown dev:dev /opt/sdk
 for sdk_dir in /opt/sdk/*; do
   [[ -e "$sdk_dir" ]] || continue

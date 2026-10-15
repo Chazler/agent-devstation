@@ -26,6 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
+      - run: bash tests/tool-registry.sh
       - run: docker compose config -q
       - name: Load bubblewrap AppArmor profile
         run: |

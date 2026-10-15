@@ -50,6 +50,11 @@ wait_for_writable_node() {
 }
 
 bash tests/codex-wrapper.sh
+bash tests/tool-registry.sh
+
+# kubectl is baked into both architectures, without a startup download.
+docker run --rm --entrypoint /usr/local/bin/kubectl "$image" version --client
+docker run --rm -e AGENT_DEVSTATION_TOOLS= "$image" bash -lc '! command -v kubectl'
 
 # The simple Compose path retains Docker's default security filters. The
 # optional sandboxed path needs the options below; test that path separately.

@@ -197,3 +197,59 @@ Run `docker compose up -d` to pull the selected tag. A new image or changed envi
 If startup fails, check `docker compose logs agent-devstation` for version, download, or workspace ownership errors. For a Codex daemon socket error, inspect `/home/dev/.codex/app-server-daemon/daemon.stderr.log` inside the container; the socket message alone does not identify the cause. If you upgraded from the old `devstation` service name, run `docker compose up -d --remove-orphans`.
 
 The editor and agents can read mounted projects and home credentials and reach the network. Use trusted projects, keep the editor authenticated, and never mount the Docker socket. See [SECURITY.md](../SECURITY.md) for private vulnerability reporting.
+
+
+## Tool registry
+
+`tools/registry.json` is the checked-in source for tool defaults, reviewed versions,
+architecture-specific download URLs and SHA-256 checksums, or specialized installers.
+`kubectl` 1.35.0 is baked into the image for AMD64 and ARM64. Docker and Playwright
+Chromium retain their existing installers and remain off by default. SDK selection
+is unchanged.
+
+```yaml
+environment:
+  AGENT_DEVSTATION_TOOLS: "kubectl,docker"
+  AGENT_DEVSTATION_TOOL_KUBECTL_VERSION: "1.35.0"
+```
+
+The list is the complete selection, not an addition to defaults. Set it to `""` to
+remove registry-managed tools. Existing Docker and Playwright enable flags still
+work: `true` adds the tool; `false` does not veto a tool explicitly named in the
+list. Playwright still requires a selected Node SDK and honors
+`AGENT_DEVSTATION_PLAYWRIGHT_VERSION`. Docker's component versions remain pinned
+in its specialized installer.
+
+Version overrides for standalone binaries must name a release already present in
+that tool's `versions` object. Unknown tools, invalid lists, unsupported versions,
+and unsupported architectures fail before tool installations or removals. No
+runtime download of manifests or shell evaluation is used. Installation stages a
+verified download, records completion, and reuses it on restart. Corrupt or missing
+binaries are repaired. Only registry-owned executable links are removed.
+Container recreation repeats optional downloads; binaries baked into the image
+need no download when their default version is selected.
+
+To add a standalone binary:
+
+1. Add an entry with `default`, `version`, `license`, and a `versions` object.
+2. For each reviewed version, supply `amd64` and `arm64` objects containing an
+   official HTTPS `url` and a pinned `sha256`. The executable name equals the key.
+   Set `version_args` to an argument array (such as `["version", "--client"]`)
+   to check the staged executable before promoting it.
+3. Add an appropriate command check to `tests/smoke.sh`, document its configuration
+   and upstream license, and run `bash tests/tool-registry.sh` plus the image checks.
+
+Archive extraction, multiple executables, and system dependencies use a custom
+installer: set `installer` to a checked-in executable `install-<name>.sh` and
+`enabled_env` to its namespaced boolean setting. The installer must implement
+idempotent installation, disabled-state cleanup, integrity checks, and interrupted
+installation recovery. Copy it into the image in the Dockerfile. Custom installers
+run after SDK installation and are skipped during the binary-only image build.
+Use the Docker and Playwright entries as examples. Defaults marked true for raw
+binaries are installed at image build time by the same generic installer.
+
+The registry installs clients only. Provide Kubernetes credentials separately,
+for example a read-only kubeconfig mount at `/home/dev/.kube/config`, readable by
+`dev`, or a service account when running in Kubernetes. Choose a registered kubectl
+version compatible with your API server; cloud authentication may require an
+additional provider CLI. See the [official kubectl installation guidance](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/).

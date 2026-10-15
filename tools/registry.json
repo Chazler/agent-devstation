@@ -1,0 +1,33 @@
+{
+  "kubectl": {
+    "default": true,
+    "version": "1.35.0",
+    "license": "Apache-2.0",
+    "versions": {
+      "1.35.0": {
+        "amd64": {
+          "url": "https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl",
+          "sha256": "a2e984a18a0c063279d692533031c1eff93a262afcc0afdc517375432d060989"
+        },
+        "arm64": {
+          "url": "https://dl.k8s.io/release/v1.35.0/bin/linux/arm64/kubectl",
+          "sha256": "58f82f9fe796c375c5c4b8439850b0f3f4d401a52434052f2df46035a8789e25"
+        }
+      }
+    },
+    "version_args": [
+      "version",
+      "--client"
+    ]
+  },
+  "docker": {
+    "default": false,
+    "installer": "install-docker-cli.sh",
+    "enabled_env": "AGENT_DEVSTATION_DOCKER_CLI_ENABLED"
+  },
+  "playwright-chromium": {
+    "default": false,
+    "installer": "install-playwright-browser.sh",
+    "enabled_env": "AGENT_DEVSTATION_PLAYWRIGHT_CHROMIUM_ENABLED"
+  }
+}
